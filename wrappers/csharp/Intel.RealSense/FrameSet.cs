@@ -8,7 +8,7 @@ namespace Intel.RealSense
     public class FrameSet : IDisposable, IEnumerable<Frame>
     {
         internal HandleRef m_instance;
-        readonly int m_count;
+        internal int m_count;
 
         public Frame AsFrame()
         {
@@ -34,18 +34,18 @@ namespace Intel.RealSense
             object error;
             if (NativeMethods.rs2_is_frame_extendable_to(ptr, Extension.Points, out error) > 0)
                 return new Points(ptr);
-            else if (NativeMethods.rs2_is_frame_extendable_to(ptr, Extension.DepthFrame, out error) > 0)
-                return new DepthFrame(ptr);
+            else if (NativeMethods.rs2_is_frame_extendable_to(ptr, Extension.DepthFrame, out error) > 0)                
+                return DepthFrame.Pool.Get(ptr);
             else if (NativeMethods.rs2_is_frame_extendable_to(ptr, Extension.VideoFrame, out error) > 0)
-                return new VideoFrame(ptr);
+                return VideoFrame.Pool.Get(ptr);
             else
-                return new Frame(ptr);
+                return Frame.Pool.Get(ptr);
         }
 
         public T FirstOrDefault<T>(Stream stream) where T : Frame
         {
-            foreach (Frame frame in this)
-            {
+            for(int i = 0; i < m_count; i++) {
+                var frame = this[i];
                 if (frame.Profile.Stream == stream)
                     return frame as T;
                 frame.Dispose();
@@ -125,7 +125,7 @@ namespace Intel.RealSense
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
+        internal bool disposedValue = false; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
         {
@@ -165,12 +165,44 @@ namespace Intel.RealSense
             if (m_instance.Handle != IntPtr.Zero)
                 NativeMethods.rs2_release_frame(m_instance.Handle);
             m_instance = new HandleRef(this, IntPtr.Zero);
+            FrameSetMarshaler.Pool.Release(this);
+        }
+    }
+
+
+    public class FrameSetPool
+    {
+        Stack<FrameSet> stack = new Stack<FrameSet>();
+
+        public FrameSet Get(IntPtr ptr)
+        {
+            if (stack.Count != 0)
+            {
+                FrameSet f = stack.Pop();
+                f.m_instance = new HandleRef(f, ptr);
+                f.disposedValue = false;
+                object error;
+                f.m_count = NativeMethods.rs2_embedded_frames_count(f.m_instance.Handle, out error);
+                return f;
+            }
+            else
+            {
+                return new FrameSet(ptr);
+            }
+
+        }
+
+        public void Release(FrameSet t)
+        {
+            stack.Push(t);
         }
     }
 
     class FrameSetMarshaler : ICustomMarshaler
     {
         private static FrameSetMarshaler Instance;
+
+        public static FrameSetPool Pool = new FrameSetPool();
 
         public static ICustomMarshaler GetInstance(string s)
         {
@@ -201,7 +233,7 @@ namespace Intel.RealSense
 
         public object MarshalNativeToManaged(IntPtr pNativeData)
         {
-            return new FrameSet(pNativeData);
+            return Pool.Get(pNativeData);
         }
     }
 }

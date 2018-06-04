@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace Intel.RealSense
@@ -6,6 +7,9 @@ namespace Intel.RealSense
     public class Frame : IDisposable
     {
         internal HandleRef m_instance;
+        public static FramePool<Frame> Pool = new FramePool<Frame>();
+
+        public Frame() { }
 
         public Frame(IntPtr ptr)
         {
@@ -14,7 +18,7 @@ namespace Intel.RealSense
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
+        internal bool disposedValue = false; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
         {
@@ -49,11 +53,12 @@ namespace Intel.RealSense
         }
         #endregion
 
-        public void Release()
+        public virtual void Release()
         {
             if (m_instance.Handle != IntPtr.Zero)
                 NativeMethods.rs2_release_frame(m_instance.Handle);
             m_instance = new HandleRef(this, IntPtr.Zero);
+            Pool.Release(this);
         }
 
         public Frame Clone()
@@ -115,6 +120,10 @@ namespace Intel.RealSense
 
     public class VideoFrame : Frame
     {
+        public static new FramePool<VideoFrame> Pool = new FramePool<VideoFrame>();
+
+        public VideoFrame() { }
+
         public VideoFrame(IntPtr ptr) : base(ptr)
         {
         }
@@ -180,10 +189,23 @@ namespace Intel.RealSense
                 handle.Free();
             }
         }
+
+        public override void Release()
+        {
+            //base.Release();
+            if (m_instance.Handle != IntPtr.Zero)
+                NativeMethods.rs2_release_frame(m_instance.Handle);
+            m_instance = new HandleRef(this, IntPtr.Zero);
+            Pool.Release(this);
+        }
     }
 
     public class DepthFrame : VideoFrame
     {
+        public static new FramePool<DepthFrame> Pool = new FramePool<DepthFrame>();
+
+        public DepthFrame() { }
+
         public DepthFrame(IntPtr ptr) : base(ptr)
         {
         }
@@ -192,6 +214,15 @@ namespace Intel.RealSense
         {
             object error;
             return NativeMethods.rs2_depth_frame_get_distance(m_instance.Handle, x, y, out error);
+        }
+
+        public override void Release()
+        {
+            //base.Release();
+            if (m_instance.Handle != IntPtr.Zero)
+                NativeMethods.rs2_release_frame(m_instance.Handle);
+            m_instance = new HandleRef(this, IntPtr.Zero);
+            Pool.Release(this);
         }
     }
 
@@ -283,6 +314,32 @@ namespace Intel.RealSense
     }
 
 
+    public class FramePool<T> where T : Frame, new()
+    {
+        Stack<T> stack = new Stack<T>();
+        object locker = new object();
+
+        public T Get(IntPtr ptr)
+        {
+            lock (locker)
+            {
+                T f = stack.Count != 0 ? stack.Pop() : new T();
+                f.m_instance = new HandleRef(f, ptr);
+                f.disposedValue = false;
+                NativeMethods.rs2_keep_frame(ptr);
+                return f;
+            }
+        }
+
+        public void Release(T t)
+        {
+            lock (locker)
+            {
+                stack.Push(t);
+            }
+        }
+    }
+
 
     class FrameMarshaler : ICustomMarshaler
     {
@@ -318,7 +375,7 @@ namespace Intel.RealSense
 
         public object MarshalNativeToManaged(IntPtr pNativeData)
         {
-            return new Frame(pNativeData);
+            return Frame.Pool.Get(pNativeData);
         }
     }
 }

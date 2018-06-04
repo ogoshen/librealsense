@@ -39,7 +39,7 @@ namespace Intel.RealSense
         {
             object error;
             var ptr = NativeMethods.rs2_wait_for_frame(m_instance.Handle, 5000, out error);
-            return FramesReleaser.ScopedReturn(releaser, new FrameSet(ptr));
+            return FramesReleaser.ScopedReturn(releaser, FrameSetMarshaler.Pool.Get(ptr));
         }
 
         public void Enqueue(Frame f)
