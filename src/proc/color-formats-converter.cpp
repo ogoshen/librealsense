@@ -22,6 +22,8 @@
 
 bool has_avx() { return false; }
 
+#elif defined(__EMSCRIPTEN__) 
+bool has_avx() { return false; }
 #else
 
 #ifdef _WIN32

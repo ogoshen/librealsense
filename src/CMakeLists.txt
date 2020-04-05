@@ -13,9 +13,13 @@ include(${_rel_path}/pipeline/CMakeLists.txt)
 include(${_rel_path}/usb/CMakeLists.txt)
 include(${_rel_path}/fw-update/CMakeLists.txt)
 
+if(EMSCRIPTEN)
+	set(BACKEND RS2_USE_WEBUSB_BACKEND)
+endif()
+
 message(STATUS "using ${BACKEND}")
 
-if(UNIX OR (ANDROID_NDK_TOOLCHAIN_INCLUDED AND (${BACKEND} STREQUAL RS2_USE_V4L2_BACKEND)))
+if((UNIX AND !EMSCRIPTEN) OR (ANDROID_NDK_TOOLCHAIN_INCLUDED AND (${BACKEND} STREQUAL RS2_USE_V4L2_BACKEND)))
     include(${_rel_path}/libusb/CMakeLists.txt)
 endif()
 
@@ -49,6 +53,10 @@ endif()
 
 if(${BACKEND} STREQUAL RS2_USE_LIBUVC_BACKEND)
     include(${_rel_path}/libuvc/CMakeLists.txt)
+endif()
+
+if(${BACKEND} STREQUAL RS2_USE_WEBUSB_BACKEND)
+    include(${_rel_path}/webusb/CMakeLists.txt)
 endif()
 
 if (BUILD_WITH_TM2)

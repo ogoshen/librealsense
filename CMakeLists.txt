@@ -5,6 +5,18 @@ project(librealsense2 LANGUAGES CXX C)
 include(CMake/lrs_options.cmake)
 include(CMake/connectivity_check.cmake)
 
+option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." FALSE)
+if (${FORCE_COLORED_OUTPUT})
+    
+    add_compile_options (-fansi-escape-codes)
+    
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+       add_compile_options (-fdiagnostics-color=always)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+       add_compile_options (-fcolor-diagnostics)
+    endif ()
+endif ()
+
 #Deprecation message, should be removed in future releases
 if(${FORCE_LIBUVC} OR ${FORCE_WINUSB_UVC} OR ${ANDROID_USB_HOST_UVC})
     MESSAGE(DEPRECATION "FORCE_LIBUVC, FORCE_WINUSB_UVC and ANDROID_USB_HOST_UVC are deprecated, use FORCE_RSUSB_BACKEND instead")
@@ -43,11 +55,13 @@ os_set_flags()
 # macro definition located at "CMake/global_config.cmake"
 global_set_flags()
 
-if(BUILD_SHARED_LIBS)
-    add_library(${LRS_TARGET} SHARED "")
-else()
-    add_library(${LRS_TARGET} STATIC "")
-endif()
+SET(CMAKE_EXECUTABLE_SUFFIX ".js")
+add_executable(${LRS_TARGET})
+# if(BUILD_SHARED_LIBS)
+#     add_library(${LRS_TARGET} SHARED "")
+# else()
+#     add_library(${LRS_TARGET} STATIC "")
+# endif()
 
 # set library version
 set_target_properties(${LRS_TARGET} PROPERTIES VERSION ${REALSENSE_VERSION_STRING} SOVERSION "${REALSENSE_VERSION_MAJOR}.${REALSENSE_VERSION_MINOR}")

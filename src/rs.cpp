@@ -1195,7 +1195,7 @@ void rs2_log_to_callback( rs2_log_severity min_severity, rs2_log_callback_ptr on
 }
 HANDLE_EXCEPTIONS_AND_RETURN( , min_severity, on_log, arg )
 
-
+#if BUILD_EASYLOGGINGPP
 unsigned rs2_get_log_message_line_number( rs2_log_message const* msg, rs2_error** error ) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL( msg );
@@ -1232,6 +1232,34 @@ const char* rs2_get_full_log_message( rs2_log_message const* msg, rs2_error** er
     return wrapper.built_msg.c_str();
 }
 HANDLE_EXCEPTIONS_AND_RETURN( nullptr, msg )
+#else
+unsigned rs2_get_log_message_line_number(rs2_log_message const* msg, rs2_error** error) BEGIN_API_CALL
+{
+	return 0;
+}
+HANDLE_EXCEPTIONS_AND_RETURN(0, msg)
+
+const char* rs2_get_log_message_filename(rs2_log_message const* msg, rs2_error** error) BEGIN_API_CALL
+{
+	VALIDATE_NOT_NULL(msg);
+	return "";
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, msg)
+
+const char* rs2_get_raw_log_message(rs2_log_message const* msg, rs2_error** error) BEGIN_API_CALL
+{
+	VALIDATE_NOT_NULL(msg);
+	return "";
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, msg)
+
+const char* rs2_get_full_log_message(rs2_log_message const* msg, rs2_error** error) BEGIN_API_CALL
+{
+	VALIDATE_NOT_NULL(msg);
+	return "";
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, msg)
+#endif
 
 
 int rs2_is_sensor_extendable_to(const rs2_sensor* sensor, rs2_extension extension_type, rs2_error** error) BEGIN_API_CALL

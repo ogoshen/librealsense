@@ -9,6 +9,12 @@
 #include <atomic>
 #include <functional>
 
+#if defined(__EMSCRIPTEN__) 
+#include "emscripten.h"
+#include "emscripten/threading.h"
+#include "pthread.h"
+#endif
+
 const int QUEUE_MAX_SIZE = 10;
 // Simplest implementation of a blocking concurrent queue for thread messaging
 template<class T>
@@ -53,8 +59,22 @@ public:
         std::unique_lock<std::mutex> lock(_mutex);
         if (_accepting)
         {
+#if defined(__EMSCRIPTEN__)
+			if (emscripten_is_main_browser_thread()) {
+				while (!pred()) {
+					lock.unlock();
+					//emscripten_sleep(0);
+					emscripten_thread_sleep(0);
+					lock.lock();
+				}
+			}
+			else {
+				_enq_cv.wait(lock, pred);
+			}
+#else
             _enq_cv.wait(lock, pred);
-            _queue.push_back(std::move(item));
+#endif
+			_queue.push_back(std::move(item));
         }
         lock.unlock();
         _deq_cv.notify_one();
@@ -67,7 +87,36 @@ public:
         _accepting = true;
         _was_flushed = false;
         const auto ready = [this]() { return (_queue.size() > 0) || _need_to_flush; };
-        if (!ready() && !_deq_cv.wait_for(lock, std::chrono::milliseconds(timeout_ms), ready))
+		const auto wait = [&]() {
+
+#if defined(__EMSCRIPTEN__)
+			if (emscripten_is_main_browser_thread()) {
+
+				bool timeout = false;
+				emscripten_async_call([](void* timeout) { *(bool*)timeout = true; }, &timeout, timeout_ms);
+
+				while (!ready()) {
+					lock.unlock();
+					if (timeout) {
+						return false;
+					}
+					emscripten_sleep(0);
+					//emscripten_thread_sleep(0);
+					lock.lock();
+				}
+				return true;
+
+			}
+			else {
+				return _deq_cv.wait_for(lock, std::chrono::milliseconds(timeout_ms), ready);
+			}
+
+#else
+			return _deq_cv.wait_for(lock, std::chrono::milliseconds(timeout_ms), ready);
+#endif
+		};
+
+        if (!ready() && !wait())
         {
             return false;
         }
@@ -189,118 +238,155 @@ public:
 class dispatcher
 {
 public:
-    class cancellable_timer
-    {
-    public:
-        cancellable_timer(dispatcher* owner)
-            : _owner(owner)
-        {}
+	class cancellable_timer
+	{
+	public:
+		cancellable_timer(dispatcher* owner)
+			: _owner(owner)
+		{}
 
-        bool try_sleep(std::chrono::milliseconds::rep ms)
-        {
-            using namespace std::chrono;
+		bool try_sleep(std::chrono::milliseconds::rep ms)
+		{
+			using namespace std::chrono;
 
-            std::unique_lock<std::mutex> lock(_owner->_was_stopped_mutex);
-            auto good = [&]() { return _owner->_was_stopped.load(); };
-            return !(_owner->_was_stopped_cv.wait_for(lock, milliseconds(ms), good));
-        }
+			std::unique_lock<std::mutex> lock(_owner->_was_stopped_mutex);
+			auto good = [&]() { return _owner->_was_stopped.load(); };
 
-    private:
-        dispatcher* _owner;
-    };
+#if defined(__EMSCRIPTEN__) 
+			if (emscripten_is_main_browser_thread())
+			{
+				bool timeout = false;
+				emscripten_async_call([](void* timeout) { *(bool*)timeout = true; }, &timeout, ms);
+				while (!good()) {
+					lock.unlock();
+					if (timeout)
+						return false;
+					emscripten_sleep(0);
+					//emscripten_thread_sleep(0);
+					lock.lock();
+				}
+				return true;
+			}
+			else {
+				return !(_owner->_was_stopped_cv.wait_for(lock, milliseconds(ms), good));
+			}
+#else
+			return !(_owner->_was_stopped_cv.wait_for(lock, milliseconds(ms), good));
+#endif
+		}
 
-    dispatcher(unsigned int cap)
-        : _queue(cap),
-          _was_stopped(true),
-          _was_flushed(false),
-          _is_alive(true)
-    {
-        _thread = std::thread([&]()
-        {
-            int timeout_ms = 5000;
-            while (_is_alive)
-            {
-                std::function<void(cancellable_timer)> item;
+	private:
+		dispatcher* _owner;
+	};
 
-                if (_queue.dequeue(&item, timeout_ms))
-                {
-                    cancellable_timer time(this);
+	dispatcher(unsigned int cap)
+		: _queue(cap),
+		_was_stopped(true),
+		_was_flushed(false),
+		_is_alive(true)
+	{
+		_thread = std::thread([&]()
+		{
+			int timeout_ms = 5000;
+			while (_is_alive)
+			{
+				std::function<void(cancellable_timer)> item;
 
-                    try
-                    {
-                        item(time);
-                    }
-                    catch(...){}
-                }
+				if (_queue.dequeue(&item, timeout_ms))
+				{
+					cancellable_timer time(this);
+
+					try
+					{
+						item(time);
+					}
+					catch(...){}
+				}
 
 #ifndef ANDROID
-                std::unique_lock<std::mutex> lock(_was_flushed_mutex);
+				std::unique_lock<std::mutex> lock(_was_flushed_mutex);
 #endif
-                _was_flushed = true;
-                _was_flushed_cv.notify_all();
+				_was_flushed = true;
+				_was_flushed_cv.notify_all();
 #ifndef ANDROID
-                lock.unlock();
+				lock.unlock();
 #endif
-            }
-        });
-    }
+			}
+		});
+	}
 
-    template<class T>
-    void invoke(T item, bool is_blocking = false)
-    {
-        if (!_was_stopped)
-        {
-            if(is_blocking)
-                _queue.blocking_enqueue(std::move(item));
-            else
-                _queue.enqueue(std::move(item));
-        }
-    }
+	template<class T>
+	void invoke(T item, bool is_blocking = false)
+	{
+		if (!_was_stopped)
+		{
+			if(is_blocking)
+				_queue.blocking_enqueue(std::move(item));
+			else
+				_queue.enqueue(std::move(item));
+		}
+	}
 
-    template<class T>
-    void invoke_and_wait(T item, std::function<bool()> exit_condition, bool is_blocking = false)
-    {
-        bool done = false;
+	template<class T>
+	void invoke_and_wait(T item, std::function<bool()> exit_condition, bool is_blocking = false)
+	{
+		bool done = false;
 
-        //action
-        auto func = std::move(item);
-        invoke([&, func](dispatcher::cancellable_timer c)
-        {
-            func(c);
-            done = true;
-            _blocking_invoke_cv.notify_one();
-        }, is_blocking);
+		//action
+		auto func = std::move(item);
+		invoke([&, func](dispatcher::cancellable_timer c)
+		{
+			func(c);
+			done = true;
+			_blocking_invoke_cv.notify_one();
+		}, is_blocking);
 
-        //wait
-        std::unique_lock<std::mutex> lk(_blocking_invoke_mutex);
-        while(_blocking_invoke_cv.wait_for(lk, std::chrono::milliseconds(10), [&](){ return !done && !exit_condition(); }));
-    }
+		//wait
+		std::unique_lock<std::mutex> lk(_blocking_invoke_mutex);
+		while(_blocking_invoke_cv.wait_for(lk, std::chrono::milliseconds(10), [&]() { return !done && !exit_condition(); }));
+	}
 
-    void start()
-    {
-        std::unique_lock<std::mutex> lock(_was_stopped_mutex);
-        _was_stopped = false;
+	void start()
+	{
+		std::unique_lock<std::mutex> lock(_was_stopped_mutex);
+		_was_stopped = false;
 
-        _queue.start();
-    }
+		_queue.start();
+	}
 
-    void stop()
-    {
-        {
-            std::unique_lock<std::mutex> lock(_was_stopped_mutex);
-            _was_stopped = true;
-            _was_stopped_cv.notify_all();
-        }
+	void stop()
+	{
+		{
+			std::unique_lock<std::mutex> lock(_was_stopped_mutex);
+			_was_stopped = true;
+			_was_stopped_cv.notify_all();
+		}
 
-        _queue.clear();
+		_queue.clear();
 
-        {
-            std::unique_lock<std::mutex> lock(_was_flushed_mutex);
-            _was_flushed = false;
-        }
+		{
+			std::unique_lock<std::mutex> lock(_was_flushed_mutex);
+			_was_flushed = false;
+		}
 
-        std::unique_lock<std::mutex> lock_was_flushed(_was_flushed_mutex);
+		std::unique_lock<std::mutex> lock_was_flushed(_was_flushed_mutex);
+
+
+#if defined(__EMSCRIPTEN__)
+		if (emscripten_is_main_browser_thread()) {
+			while (!_was_flushed.load()) {
+				lock_was_flushed.unlock();
+				emscripten_sleep(0);
+				//emscripten_thread_sleep(0);
+				lock_was_flushed.lock();
+			}
+		}
+		else {
+			_was_flushed_cv.wait_for(lock_was_flushed, std::chrono::hours(999999), [&]() { return _was_flushed.load(); });
+		}
+#else
         _was_flushed_cv.wait_for(lock_was_flushed, std::chrono::hours(999999), [&]() { return _was_flushed.load(); });
+#endif
 
         _queue.start();
     }
@@ -310,19 +396,47 @@ public:
         stop();
         _queue.clear();
         _is_alive = false;
+
+#if defined(__EMSCRIPTEN__)
+		if (emscripten_is_main_browser_thread()) {
+
+			// problem here is that we need to join without blocking for emscripten,
+			// but this will make the thread no longer joinable, without marking it such,
+			// which will throw when std::thread::~thread() tries to terminate it.
+			// so we need to manually nullify the native handle.
+			// could maybe just detach the thread instead?
+			
+
+			while (0 != pthread_tryjoin_np(_thread.native_handle(), NULL)) {
+				emscripten_sleep(0);
+				//emscripten_thread_sleep(0);
+			}
+
+			// see emscripten/system/include/libcxx/thread 
+			std::thread::native_handle_type* hnd = (std::thread::native_handle_type*)(&_thread);
+			*hnd = _LIBCPP_NULL_THREAD;
+		}
+		else {
+			_thread.join();
+		}
+
+		//_thread.join();
+
+#else
         _thread.join();
-    }
+#endif
+			}
 
     bool flush()
     {
         std::mutex m;
         std::condition_variable cv;
         bool invoked = false;
-        auto wait_sucess = std::make_shared<std::atomic_bool>(true);
-        invoke([&, wait_sucess](cancellable_timer t)
+        auto wait_success = std::make_shared<std::atomic_bool>(true);
+        invoke([&, wait_success](cancellable_timer t)
         {
             ///TODO: use _queue to flush, and implement properly
-            if (_was_stopped || !(*wait_sucess))
+            if (_was_stopped || !(*wait_success))
                 return;
 
             {
@@ -332,8 +446,30 @@ public:
             cv.notify_one();
         });
         std::unique_lock<std::mutex> locker(m);
-        *wait_sucess = cv.wait_for(locker, std::chrono::seconds(10), [&]() { return invoked || _was_stopped; });
-        return *wait_sucess;
+#if defined(__EMSCRIPTEN__)
+		if (emscripten_is_main_browser_thread()) {
+
+			bool timeout = false;
+			emscripten_async_call([](void* timeout) { *(bool*)timeout = true; }, &timeout, 10*1000);
+
+			while (!(invoked || _was_stopped)) {
+				locker.unlock();
+				if (timeout) {
+					*wait_success = false;
+					return *wait_success;
+				}
+				emscripten_sleep(0);
+				locker.lock();
+			}
+			*wait_success = true;
+		}
+		else {
+			*wait_success = cv.wait_for(locker, std::chrono::seconds(10), [&]() { return invoked || _was_stopped; });
+		}
+#else
+        *wait_success = cv.wait_for(locker, std::chrono::seconds(10), [&]() { return invoked || _was_stopped; });
+#endif
+		return *wait_success;
     }
 
     bool empty()

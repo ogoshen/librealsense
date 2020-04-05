@@ -10,6 +10,7 @@
 #elif !defined(RS2_USE_LIBUVC_BACKEND) && !defined(RS2_USE_WMF_BACKEND) && defined(RS2_USE_V4L2_BACKEND) && !defined(RS2_USE_WINUSB_UVC_BACKEND)&&!defined(RS2_USE_ANDROID_BACKEND)
 // UVC support will be provided via Video 4 Linux 2 / libusb backend
 #elif !defined(RS2_USE_LIBUVC_BACKEND) && !defined(RS2_USE_WMF_BACKEND) && !defined(RS2_USE_V4L2_BACKEND) && !defined(RS2_USE_WINUSB_UVC_BACKEND) && defined(RS2_USE_ANDROID_BACKEND)
+#elif !defined(RS2_USE_LIBUVC_BACKEND) && !defined(RS2_USE_WMF_BACKEND) && !defined(RS2_USE_V4L2_BACKEND) && !defined(RS2_USE_WINUSB_UVC_BACKEND) && !defined(RS2_USE_ANDROID_BACKEND) && defined(RS2_USE_WEBUSB_BACKEND)
 // UVC support will be provided via Android backend
 #else
 #error No UVC backend selected. Please #define exactly one of RS2_USE_LIBUVC_BACKEND, RS2_USE_WMF_BACKEND, RS2_USE_WINUSB_UVC_BACKEND or RS2_USE_V4L2_BACKEND

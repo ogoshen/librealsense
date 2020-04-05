@@ -19,7 +19,7 @@
 #define FORMAT          RS2_FORMAT_RGB8   // rs2_format is identifies how binary data is encoded within a frame   //
 #define WIDTH           640               // Defines the number of columns for each frame                         //
 #define HEIGHT          480               // Defines the number of lines for each frame                           //
-#define FPS             30                // Defines the rate of frames per second                                //
+#define FPS             60                // Defines the rate of frames per second                                //
 #define STREAM_INDEX    0                 // Defines the stream index, used for multiple streams of the same type //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -28,38 +28,44 @@ int main()
 {
     rs2_error* e = 0;
 
+	rs2_log_to_console(RS2_LOG_SEVERITY_DEBUG, &e);
+	check_error(e);
+
     // Create a context object. This object owns the handles to all connected realsense devices.
     // The returned object should be released with rs2_delete_context(...)
     rs2_context* ctx = rs2_create_context(RS2_API_VERSION, &e);
     check_error(e);
 
-    /* Get a list of all the connected devices. */
-    // The returned object should be released with rs2_delete_device_list(...)
-    rs2_device_list* device_list = rs2_query_devices(ctx, &e);
-    check_error(e);
+    ///* Get a list of all the connected devices. */
+    //// The returned object should be released with rs2_delete_device_list(...)
+    //rs2_device_list* device_list = rs2_query_devices(ctx, &e);
+    //check_error(e);
 
-    int dev_count = rs2_get_device_count(device_list, &e);
-    check_error(e);
-    printf("There are %d connected RealSense devices.\n", dev_count);
-    if (0 == dev_count)
-        return EXIT_FAILURE;
+    //int dev_count = rs2_get_device_count(device_list, &e);
+    //check_error(e);
+    //printf("There are %d connected RealSense devices.\n", dev_count);
+    //if (0 == dev_count)
+    //    return EXIT_FAILURE;
 
-    // Get the first connected device
-    // The returned object should be released with rs2_delete_device(...)
-    rs2_device* dev = rs2_create_device(device_list, 0, &e);
-    check_error(e);
+    //// Get the first connected device
+    //// The returned object should be released with rs2_delete_device(...)
+    //rs2_device* dev = rs2_create_device(device_list, 0, &e);
+    //check_error(e);
 
-    print_device_info(dev);
+    //print_device_info(dev);
 
     // Create a pipeline to configure, start and stop camera streaming
     // The returned object should be released with rs2_delete_pipeline(...)
-    rs2_pipeline* pipeline =  rs2_create_pipeline(ctx, &e);
+    rs2_pipeline* pipeline = rs2_create_pipeline(ctx, &e);
     check_error(e);
 
     // Create a config instance, used to specify hardware configuration
     // The retunred object should be released with rs2_delete_config(...)
     rs2_config* config = rs2_create_config(&e);
     check_error(e);
+
+	rs2_config_enable_device_from_file(config, "C:/tmp/synth.bag", &e);
+	check_error(e);
 
     // Request a specific configuration
     rs2_config_enable_stream(config, STREAM, STREAM_INDEX, WIDTH, HEIGHT, FORMAT, FPS, &e);
@@ -107,8 +113,8 @@ int main()
             check_error(e);
             const char* frame_timestamp_domain_str = rs2_timestamp_domain_to_string(frame_timestamp_domain);
 
-            rs2_metadata_type frame_metadata_time_of_arrival = rs2_get_frame_metadata(frame, RS2_FRAME_METADATA_TIME_OF_ARRIVAL, &e);
-            check_error(e);
+            //rs2_metadata_type frame_metadata_time_of_arrival = rs2_get_frame_metadata(frame, RS2_FRAME_METADATA_TIME_OF_ARRIVAL, &e);
+            //check_error(e);
 
             printf("RGB frame arrived.\n");
             printf("First 10 bytes: ");
@@ -119,7 +125,7 @@ int main()
             printf("\nFrame No: %llu\n", frame_number);
             printf("Timestamp: %f\n", frame_timestamp);
             printf("Timestamp domain: %s\n", frame_timestamp_domain_str);
-            printf("Time of arrival: %lld\n\n", frame_metadata_time_of_arrival);
+            //printf("Time of arrival: %lld\n\n", frame_metadata_time_of_arrival);
             rs2_release_frame(frame);
         }
 
@@ -134,8 +140,8 @@ int main()
     rs2_delete_pipeline_profile(pipeline_profile);
     rs2_delete_config(config);
     rs2_delete_pipeline(pipeline);
-    rs2_delete_device(dev);
-    rs2_delete_device_list(device_list);
+    //rs2_delete_device(dev);
+    //rs2_delete_device_list(device_list);
     rs2_delete_context(ctx);
 
     return EXIT_SUCCESS;

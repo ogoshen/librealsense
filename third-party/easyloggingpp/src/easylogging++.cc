@@ -1,24 +1,20 @@
 //
 //  Bismillah ar-Rahmaan ar-Raheem
 //
-//  Easylogging++ v9.96.5
+//  Easylogging++ v9.96.7
 //  Cross-platform logging library for C++ applications
 //
-//  Copyright (c) 2012-2018 Muflihun Labs
+//  Copyright (c) 2012-2018 Zuhd Web Services
 //  Copyright (c) 2012-2018 @abumusamq
 //
 //  This library is released under the MIT Licence.
-//  https://github.com/muflihun/easyloggingpp/blob/master/LICENSE
+//  https://github.com/zuhd-org/easyloggingpp/blob/master/LICENSE
 //
-//  https://github.com/muflihun/easyloggingpp
-//  https://muflihun.github.io/easyloggingpp
+//  https://zuhd.org
 //  http://muflihun.com
 //
 
 #include "easylogging++.h"
-#ifdef ANDROID
-#include <android/log.h>
-#endif
 
 #if defined(AUTO_INITIALIZE_EASYLOGGINGPP)
 INITIALIZE_EASYLOGGINGPP
@@ -934,7 +930,7 @@ void Str::replaceFirstWithEscape(base::type::string_t& str, const base::type::st
   std::size_t foundAt = base::type::string_t::npos;
   while ((foundAt = str.find(replaceWhat, foundAt + 1)) != base::type::string_t::npos) {
     if (foundAt > 0 && str[foundAt - 1] == base::consts::kFormatSpecifierChar) {
-      str.erase(foundAt > 0 ? foundAt - 1 : 0, 1);
+      str.erase(foundAt - 1, 1);
       ++foundAt;
     } else {
       str.replace(foundAt, replaceWhat.length(), replaceWith);
@@ -1503,7 +1499,7 @@ void LogFormat::parseFromFormat(const base::type::string_t& userFormat) {
         if (hasFlag(flag)) {
           // If we already have flag we remove the escape chars so that '%%' is turned to '%'
           // even after specifier resolution - this is because we only replaceFirst specifier
-          formatCopy.erase(foundAt > 0 ? foundAt - 1 : 0, 1);
+          formatCopy.erase(foundAt - 1, 1);
           ++foundAt;
         }
       } else {
@@ -2071,20 +2067,26 @@ Storage::Storage(const LogBuilderPtr& defaultLogBuilder) :
   m_registeredLoggers(new base::RegisteredLoggers(defaultLogBuilder)),
   m_flags(ELPP_DEFAULT_LOGGING_FLAGS),
   m_vRegistry(new base::VRegistry(0, &m_flags)),
+
 #if ELPP_ASYNC_LOGGING
   m_asyncLogQueue(new base::AsyncLogQueue()),
   m_asyncDispatchWorker(asyncDispatchWorker),
 #endif  // ELPP_ASYNC_LOGGING
+
   m_preRollOutCallback(base::defaultPreRollOutCallback) {
   // Register default logger
   m_registeredLoggers->get(std::string(base::consts::kDefaultLoggerId));
   // We register default logger anyway (worse case it's not going to register) just in case
   m_registeredLoggers->get("default");
+
+#if defined(ELPP_FEATURE_ALL) || defined(ELPP_FEATURE_PERFORMANCE_TRACKING)
   // Register performance logger and reconfigure format
   Logger* performanceLogger = m_registeredLoggers->get(std::string(base::consts::kPerformanceLoggerId));
   m_registeredLoggers->get("performance");
   performanceLogger->configurations()->setGlobally(ConfigurationType::Format, std::string("%datetime %level %msg"));
   performanceLogger->reconfigure();
+#endif // defined(ELPP_FEATURE_ALL) || defined(ELPP_FEATURE_PERFORMANCE_TRACKING)
+
 #if defined(ELPP_SYSLOG)
   // Register syslog logger and reconfigure format
   Logger* sysLogLogger = m_registeredLoggers->get(std::string(base::consts::kSysLogLoggerId));
@@ -2212,26 +2214,6 @@ void DefaultLogDispatchCallback::handle(const LogDispatchData* data) {
 }
 
 void DefaultLogDispatchCallback::dispatch(base::type::string_t&& logLine) {
-#ifdef ANDROID
-  if (m_data->logMessage()->logger()->m_typedConfigurations->toStandardOutput(m_data->logMessage()->level())) {
-    int androidLogPriority = ANDROID_LOG_FATAL;
-    if (m_data->logMessage()->level() == Level::Fatal)
-      androidLogPriority = ANDROID_LOG_FATAL;
-    else if (m_data->logMessage()->level() == Level::Error)
-      androidLogPriority = ANDROID_LOG_ERROR;
-    else if (m_data->logMessage()->level() == Level::Warning)
-      androidLogPriority = ANDROID_LOG_WARN;
-    else if (m_data->logMessage()->level() == Level::Info)
-      androidLogPriority = ANDROID_LOG_INFO;
-    else if (m_data->logMessage()->level() == Level::Debug)
-      androidLogPriority = ANDROID_LOG_DEBUG;
-    else
-      androidLogPriority = ANDROID_LOG_FATAL;
-
-    __android_log_print(androidLogPriority, "librealsense", "%s", logLine.c_str());
-  }
-#endif
-
   if (m_data->dispatchAction() == base::DispatchAction::NormalLog) {
     if (m_data->logMessage()->logger()->m_typedConfigurations->toFile(m_data->logMessage()->level())) {
       base::type::fstream_t* fs = m_data->logMessage()->logger()->m_typedConfigurations->fileStream(
@@ -3120,11 +3102,11 @@ void Loggers::clearVModules(void) {
 // VersionInfo
 
 const std::string VersionInfo::version(void) {
-  return std::string("9.96.5");
+  return std::string("9.96.7");
 }
 /// @brief Release date of current version
 const std::string VersionInfo::releaseDate(void) {
-  return std::string("07-09-2018 0950hrs");
+  return std::string("24-11-2018 0728hrs");
 }
 
 } // namespace el
