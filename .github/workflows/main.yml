@@ -42,4 +42,4 @@ jobs:
       with:
         cmakeGenerator: 'Ninja'  
         buildWithCMakeArgs: '-- -v'
-        #cmakeToolchainPath: "${env.EMSDK}/cmake/Modules/Platform/Emscripten.cmake"
+        cmakeToolchainPath: "${env.EMSCRIPTEN_ROOT}/cmake/Modules/Platform/Emscripten.cmake"
