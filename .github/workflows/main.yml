@@ -37,8 +37,8 @@ jobs:
     - name: Setup Emscripten
       uses: lovasoa/setup-emscripten@v1
     
-    - name: Emscripten shell
-      run: source ../../../../../opt/hostedtoolcache/emscripten/latest/x64/emsdk_env.sh
+#     - name: Activate Emscripten
+#       run: source ../../../../../opt/hostedtoolcache/emscripten/latest/x64/emsdk_env.sh
       
     - name: run-cmake
       uses: lukka/run-cmake@v2.3
@@ -46,3 +46,5 @@ jobs:
         cmakeGenerator: 'Ninja'  
         buildWithCMakeArgs: '-- -v'
         cmakeToolchainPath: "${env.EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+      env:
+        EMSDK: /opt/hostedtoolcache/emscripten/latest/x64
