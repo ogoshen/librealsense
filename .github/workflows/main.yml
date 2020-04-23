@@ -40,4 +40,6 @@ jobs:
     - name: run-cmake
       uses: lukka/run-cmake@v2.3
       with:
-        cmakeToolchainPath: "${env.EMSDK}/cmake/Modules/Platform/Emscripten.cmake"
+        cmakeGenerator: 'Ninja'  
+        buildWithCMakeArgs: '-- -v'
+        #cmakeToolchainPath: "${env.EMSDK}/cmake/Modules/Platform/Emscripten.cmake"
