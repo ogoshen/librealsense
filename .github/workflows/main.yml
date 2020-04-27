@@ -45,6 +45,6 @@ jobs:
       with:
         cmakeGenerator: 'Ninja'  
         buildWithCMakeArgs: '-- -v'
-        cmakeToolchainPath: "${env.EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        cmakeToolchainPath: "$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
       env:
         EMSDK: /opt/hostedtoolcache/emscripten/latest/x64
