@@ -44,8 +44,9 @@ jobs:
       uses: lukka/run-cmake@v2.3
       with:
         cmakeGenerator: 'Ninja'
+        cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
         #cmakeBuildType: 'Release' 
-        cmakeAppendedArgs: "-DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF -DBUILD_GLSL_EXTENSIONS=OFF"
+        cmakeAppendedArgs: "-GNinja -DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF -DBUILD_GLSL_EXTENSIONS=OFF -D -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
         buildWithCMakeArgs: '-- -v'
         cmakeWrapperCommand: emcmake
         cmakeToolchainPath: "$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
