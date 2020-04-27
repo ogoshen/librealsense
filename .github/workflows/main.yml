@@ -45,8 +45,9 @@ jobs:
       with:
         cmakeGenerator: 'Ninja'
         #cmakeBuildType: 'Release' 
-        cmakeCommandArgs: "-DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF -DBUILD_GLSL_EXTENSIONS=OFF"
+        cmakeAppendedArgs: "-DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF -DBUILD_GLSL_EXTENSIONS=OFF"
         buildWithCMakeArgs: '-- -v'
+        cmakeWrapperCommand: emcmake
         cmakeToolchainPath: "$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
       env:
         EMSDK: /opt/hostedtoolcache/emscripten/latest/x64
