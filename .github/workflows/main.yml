@@ -52,4 +52,4 @@ jobs:
         cmakeToolchainPath: "$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
       env:
         EMSDK: /opt/hostedtoolcache/emscripten/latest/x64
-        CXXFLAGS: -s ASYNCIFY -s USE_PTHREADS=1 -s PTHREADS_DEBUG=1 -s PTHREAD_POOL_SIZE=1 -s FORCE_FILESYSTEM=1 -s EXPORTED_FUNCTIONS=@exported_functions.json -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'setValue', 'getValue', 'FS', 'addFunction', 'AsciiToString']" -s INITIAL_MEMORY=256MB -s ALLOW_TABLE_GROWTH=1 -s DISABLE_EXCEPTION_CATCHING=0 -O3 -g4
+        CXXFLAGS: -s ASYNCIFY -s USE_PTHREADS=1 -s PTHREADS_DEBUG=1 -s PTHREAD_POOL_SIZE=1 -s FORCE_FILESYSTEM=1 -s EXPORTED_FUNCTIONS=@${{ runner.workspace }}/src/webusb/exported_functions.json -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'setValue', 'getValue', 'FS', 'addFunction', 'AsciiToString']" -s INITIAL_MEMORY=256MB -s ALLOW_TABLE_GROWTH=1 -s DISABLE_EXCEPTION_CATCHING=0 -O3 -g4
