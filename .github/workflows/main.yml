@@ -40,9 +40,6 @@ jobs:
 #     - name: Activate Emscripten
 #       run: source ../../../../../opt/hostedtoolcache/emscripten/latest/x64/emsdk_env.sh
 
-#     - name: copy exported_functions.json to buildDirectory
-#       run: cp ${{ runner.workspace }}/librealsense/src/webusb/exported_functions.json ${{ github.workspace }}/../../_temp/exported_functions.json
-
     - name: run-cmake
       uses: lukka/run-cmake@v2.3
       with:
@@ -57,3 +54,10 @@ jobs:
         EMSDK: /opt/hostedtoolcache/emscripten/latest/x64
         CXXFLAGS: -s WASM=1 -s ASYNCIFY -s USE_PTHREADS=1 -s PTHREADS_DEBUG=1 -s PTHREAD_POOL_SIZE=1 -s FORCE_FILESYSTEM=1 -s EXPORTED_FUNCTIONS=@${{ runner.workspace }}/librealsense/src/webusb/exported_functions.json -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'setValue', 'getValue', 'FS', 'addFunction', 'AsciiToString']" -s INITIAL_MEMORY=256MB -s ALLOW_TABLE_GROWTH=1 -s DISABLE_EXCEPTION_CATCHING=0 -O3 -g4
         CFLAGS: -s WASM=1 -s ASYNCIFY -s USE_PTHREADS=1 -s PTHREADS_DEBUG=1 -s PTHREAD_POOL_SIZE=1 -s FORCE_FILESYSTEM=1 -s EXPORTED_FUNCTIONS=@${{ runner.workspace }}/librealsense/src/webusb/exported_functions.json -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'setValue', 'getValue', 'FS', 'addFunction', 'AsciiToString']" -s INITIAL_MEMORY=256MB -s ALLOW_TABLE_GROWTH=1 -s DISABLE_EXCEPTION_CATCHING=0 -O3 -g4
+
+    - name: Copy artifacts
+      run: |
+        mkdir ./build
+        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense.js ./build
+        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense.worker.js ./build
+        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense.wasm ./build
