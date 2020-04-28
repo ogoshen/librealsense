@@ -49,7 +49,7 @@ jobs:
         cmakeGenerator: 'Ninja'
         cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
         cmakeBuildType: 'Release' 
-        cmakeAppendedArgs: "-GNinja -DEMSCRIPTEN=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_WITH_STATIC_CRT=OFF -DBUILD_WITH_TM2=OFF -DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF -DBUILD_GLSL_EXTENSIONS=OFF -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        cmakeAppendedArgs: "-GNinja -DEMSCRIPTEN=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_WITH_STATIC_CRT=OFF -DIMPORT_DEPTH_CAM_FW=OFF -DBUILD_WITH_TM2=OFF -DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF -DBUILD_GLSL_EXTENSIONS=OFF -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
         buildWithCMakeArgs: '--config Release -- -v'
         cmakeWrapperCommand: emcmake
         cmakeToolchainPath: "$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
