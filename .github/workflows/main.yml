@@ -58,6 +58,6 @@ jobs:
     - name: Copy artifacts
       run: |
         mkdir ./build
-        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense.js ./build
-        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense.worker.js ./build
-        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense.wasm ./build
+        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense2.js ./build
+        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense2.worker.js ./build
+        cp ${{ runner.workspace }}/librealsense/../../_temp/realsense2.wasm ./build
